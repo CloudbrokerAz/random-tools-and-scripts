@@ -12,10 +12,12 @@
 #   - -v, --visibility - public/private (default: public)
 
 #   Usage examples:
-#   # Create 1 repo (ai-iac-consumer-demo01)
+#   # Create 1 repo (auto-finds next available number)
 #   ./scripts/create-demo-repos.zsh
+#
+#   # If demo01 exists, creates demo02. If none exist, creates demo01.
 
-#   # Create 5 repos (ai-iac-consumer-demo01 through demo05)
+#   # Create 5 repos (continues from highest existing)
 #   ./scripts/create-demo-repos.zsh -c 5
 
 #   # Create 10 repos with custom name
@@ -72,11 +74,17 @@ Environment Variables:
     GITHUB_HOST             GitHub Enterprise host
     GITHUB_ACCOUNT          Target account for new repos
 
+Behavior:
+    The script automatically finds existing repos matching the base name pattern
+    and creates new repos starting from the next available number.
+
+    Example: If ai-iac-consumer-demo01 exists, running with -c 1 creates demo02.
+
 Examples:
-    # Create 1 repo with defaults
+    # Create 1 repo (auto-increments from highest existing)
     $0
 
-    # Create 5 repos
+    # Create 5 repos (e.g., demo03 through demo07 if demo01-02 exist)
     $0 -c 5
 
     # Create 3 repos with custom name
@@ -214,17 +222,24 @@ find_next_available_number() {
     log_info "Checking for existing repos matching '${base_name}*'..."
 
     # Query GitHub for repos matching our base name pattern
+    # NO_COLOR prevents ANSI escape codes in output
     local repos
-    repos=$(GH_HOST="$GITHUB_HOST" gh repo list "$GITHUB_ACCOUNT" \
+    repos=$(NO_COLOR=1 GH_HOST="$GITHUB_HOST" gh repo list "$GITHUB_ACCOUNT" \
         --json name \
         --jq '.[].name' \
-        --limit 1000 2>/dev/null | grep "^${base_name}[0-9]*$" || true)
+        --limit 1000 2>/dev/null | grep -E "^${base_name}[0-9]+$" || true)
 
     if [[ -n "$repos" ]]; then
         # Extract numbers and find the highest
         while IFS= read -r repo; do
-            # Extract the numeric suffix (e.g., "demo01" -> "01" -> 1)
+            # Skip empty lines
+            [[ -z "$repo" ]] && continue
+            # Extract the numeric suffix (e.g., "demo01" -> "01")
             local num="${repo#$base_name}"
+            # Strip any non-digit characters (safety)
+            num="${num//[^0-9]/}"
+            # Skip if no number extracted
+            [[ -z "$num" ]] && continue
             # Remove leading zeros for arithmetic
             num=$((10#$num))
             if (( num > highest )); then
@@ -315,12 +330,20 @@ main() {
 
     preflight_checks
 
+    # Find the next available starting number
+    local highest_existing
+    highest_existing=$(find_next_available_number "$REPO_BASE_NAME")
+    local start_num=$((highest_existing + 1))
+
+    log_info "Will create repos starting from ${REPO_BASE_NAME}$(printf '%02d' $start_num)"
+    echo ""
+
     local created=0
     local skipped=0
 
-    for i in $(seq -w 1 "$REPO_COUNT"); do
-        # Format number with leading zeros (01, 02, ... 10, 11, etc.)
-        local padded=$(printf "%02d" "$i")
+    for i in $(seq 1 "$REPO_COUNT"); do
+        local repo_num=$((start_num + i - 1))
+        local padded=$(printf "%02d" "$repo_num")
         local repo_name="${REPO_BASE_NAME}${padded}"
 
         if create_repo "$repo_name"; then
