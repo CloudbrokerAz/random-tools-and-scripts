@@ -205,6 +205,41 @@ preflight_checks() {
 }
 
 # =============================================================================
+# FIND NEXT AVAILABLE REPO NUMBER
+# =============================================================================
+find_next_available_number() {
+    local base_name="$1"
+    local highest=0
+
+    log_info "Checking for existing repos matching '${base_name}*'..."
+
+    # Query GitHub for repos matching our base name pattern
+    local repos
+    repos=$(GH_HOST="$GITHUB_HOST" gh repo list "$GITHUB_ACCOUNT" \
+        --json name \
+        --jq '.[].name' \
+        --limit 1000 2>/dev/null | grep "^${base_name}[0-9]*$" || true)
+
+    if [[ -n "$repos" ]]; then
+        # Extract numbers and find the highest
+        while IFS= read -r repo; do
+            # Extract the numeric suffix (e.g., "demo01" -> "01" -> 1)
+            local num="${repo#$base_name}"
+            # Remove leading zeros for arithmetic
+            num=$((10#$num))
+            if (( num > highest )); then
+                highest=$num
+            fi
+        done <<< "$repos"
+        log_info "Found existing repos up to ${base_name}$(printf '%02d' $highest)"
+    else
+        log_info "No existing repos found matching pattern"
+    fi
+
+    echo "$highest"
+}
+
+# =============================================================================
 # REPO CREATION
 # =============================================================================
 create_repo() {
