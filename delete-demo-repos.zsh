@@ -18,6 +18,17 @@
 
 set -e
 
+# ─── Token Resolution ────────────────────────────────────────────────────────
+# GH_TOKEN is the highest-priority env var for gh CLI and works for ANY host.
+# GITHUB_TOKEN and GH_ENTERPRISE_TOKEN are also accepted.
+if [[ -z "${GH_TOKEN:-}" ]]; then
+    if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+        export GH_TOKEN="$GITHUB_TOKEN"
+    elif [[ -n "${GH_ENTERPRISE_TOKEN:-}" ]]; then
+        export GH_TOKEN="$GH_ENTERPRISE_TOKEN"
+    fi
+fi
+
 # =============================================================================
 #「 ネオン 」 JAPAN NEON THEME
 # =============================================================================
