@@ -18,17 +18,6 @@
 
 set -e
 
-# ─── Token Resolution ────────────────────────────────────────────────────────
-# GH_TOKEN is the highest-priority env var for gh CLI and works for ANY host.
-# GITHUB_TOKEN and GH_ENTERPRISE_TOKEN are also accepted.
-if [[ -z "${GH_TOKEN:-}" ]]; then
-    if [[ -n "${GITHUB_TOKEN:-}" ]]; then
-        export GH_TOKEN="$GITHUB_TOKEN"
-    elif [[ -n "${GH_ENTERPRISE_TOKEN:-}" ]]; then
-        export GH_TOKEN="$GH_ENTERPRISE_TOKEN"
-    fi
-fi
-
 # =============================================================================
 #「 ネオン 」 JAPAN NEON THEME
 # =============================================================================
@@ -192,7 +181,7 @@ if [[ -n "$DEMO_REPO_TARGETS" ]]; then
     IFS=',' read -rA KNOWN_TARGETS <<< "$DEMO_REPO_TARGETS"
 else
     printf "\n  ${C_RED}✗${C_RESET} ${C_WHITE}DEMO_REPO_TARGETS${C_RESET} env var is not set.\n" >&2
-    printf "    ${C_DIM}Run: ./ai/setup-demo-env.zsh${C_RESET}\n\n" >&2
+    printf "    ${C_DIM}Run: ./setup-demo-env.zsh${C_RESET}\n\n" >&2
     exit 1
 fi
 

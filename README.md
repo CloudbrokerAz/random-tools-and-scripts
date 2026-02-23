@@ -30,7 +30,7 @@ Interactive wizard that writes `~/.demo-repos.env` with two environment variable
 
 | Variable | Format | Example |
 |---|---|---|
-| `DEMO_REPO_TARGETS` | Comma-separated `HOST::ACCOUNT` pairs | `github.com::MyOrg,github.ibm.com::Aaron-Evans2` |
+| `DEMO_REPO_TARGETS` | Comma-separated `HOST::ACCOUNT` pairs | `github.com::MyOrg,ghe.company.com::MyTeam` |
 | `DEMO_REPO_TEMPLATES` | Comma-separated `ORG/REPO` or `HOST::ORG/REPO` | `MyOrg/app-template,github.ibm.com::Team/iac-template` |
 
 The setup script will:
@@ -41,17 +41,19 @@ Both `DEMO_REPO_TARGETS` and `DEMO_REPO_TEMPLATES` must be set before running th
 
 ## Authentication
 
-Both scripts resolve a token for the `gh` CLI using this priority:
+The scripts delegate authentication entirely to the `gh` CLI, which natively resolves tokens per host:
 
-1. **`GH_TOKEN`** — highest priority, used directly by `gh` for any host
-2. **`GITHUB_TOKEN`** — common in GitHub Actions; promoted to `GH_TOKEN`
-3. **`GH_ENTERPRISE_TOKEN`** — fallback for GHE; promoted to `GH_TOKEN`
+| Variable | Scope |
+|---|---|
+| `GH_TOKEN` | All hosts (global override) |
+| `GITHUB_TOKEN` | github.com only |
+| `GH_ENTERPRISE_TOKEN` | Enterprise hosts only |
 
 If none of these are set, `gh` falls back to its own auth store. You can authenticate interactively:
 
 ```zsh
 gh auth login                              # github.com
-gh auth login --hostname github.ibm.com    # GitHub Enterprise
+gh auth login --hostname your-ghe.com      # GitHub Enterprise
 ```
 
 ## Create — `create-demo-repos.zsh`
@@ -68,10 +70,10 @@ Creates demo repositories by cloning a template (all branches and tags) and push
 |---|---|---|
 | `-t`, `--template NUM\|ORG/REPO` | Template selection (index or direct reference) | Interactive menu |
 | `-c`, `--count NUMBER` | Number of repos to create | `1` |
-| `-a`, `--account NAME` | Target GitHub account/org | `Aaron-Evans2` |
+| `-a`, `--account NAME` | Target GitHub account/org | First `DEMO_REPO_TARGETS` entry |
 | `-n`, `--name BASE_NAME` | Base repo name | Auto-derived from template (`*-template` → `*-demo`) |
 | `-p`, `--path PATH` | Local clone directory | `~/Documents/repos` |
-| `-h`, `--host HOST` | GitHub Enterprise hostname | `github.ibm.com` |
+| `-h`, `--host HOST` | GitHub Enterprise hostname | First `DEMO_REPO_TARGETS` entry |
 | `-v`, `--visibility TYPE` | `public` or `private` | `public` |
 | `--help` | Show help | |
 
@@ -117,7 +119,7 @@ Deletes demo repositories both remotely (via `gh`) and locally (the cloned direc
 ./delete-demo-repos.zsh
 
 # Delete specific repos
-./delete-demo-repos.zsh -a Aaron-Evans2 -H github.ibm.com ai-iac-consumer-demo01 ai-iac-consumer-demo02
+./delete-demo-repos.zsh -a MyOrg -H github.example.com ai-iac-consumer-demo01 ai-iac-consumer-demo02
 
 # Delete a range (zsh brace expansion)
 ./delete-demo-repos.zsh ai-iac-consumer-demo{01..10}
@@ -136,11 +138,11 @@ Deletes demo repositories both remotely (via `gh`) and locally (the cloned direc
 |---|---|---|---|
 | `DEMO_REPO_TARGETS` | create, delete | `HOST::ACCOUNT` pairs (comma-separated) | *Required* — set via `setup-demo-env.zsh` |
 | `DEMO_REPO_TEMPLATES` | create | Template repos (comma-separated) | *Required* — set via `setup-demo-env.zsh` |
-| `GH_TOKEN` | create, delete | Auth token for `gh` CLI (any host) | |
-| `GITHUB_TOKEN` | create, delete | Fallback token (promoted to `GH_TOKEN`) | |
-| `GH_ENTERPRISE_TOKEN` | create, delete | GHE fallback token (promoted to `GH_TOKEN`) | |
-| `GITHUB_HOST` | create | Default GitHub Enterprise hostname | `github.ibm.com` |
-| `GITHUB_ACCOUNT` | create | Default target account | `Aaron-Evans2` |
+| `GH_TOKEN` | gh CLI | Auth token for all hosts (global override) | |
+| `GITHUB_TOKEN` | gh CLI | Auth token for github.com | |
+| `GH_ENTERPRISE_TOKEN` | gh CLI | Auth token for enterprise hosts | |
+| `GITHUB_HOST` | create | Default GitHub Enterprise hostname | First `DEMO_REPO_TARGETS` entry |
+| `GITHUB_ACCOUNT` | create | Default target account | First `DEMO_REPO_TARGETS` entry |
 | `CLONE_BASE_PATH` | create, delete | Local directory for cloned repos | `~/Documents/repos` |
 | `REPO_COUNT` | create | Number of repos to create | `1` |
 | `REPO_VISIBILITY` | create | Repo visibility (`public`/`private`) | `public` |

@@ -4,11 +4,11 @@
 # Creates demo repositories from a template with all branches
 #
 # Variables (via CLI args or env vars):
-#   - -a, --account - Target GitHub account (default: Aaron-Evans2)
+#   - -a, --account - Target GitHub account (from DEMO_REPO_TARGETS or CLI)
 #   - -n, --name - Base repo name (auto-derived from template if not set)
 #   - -c, --count - Number of repos to create (default: 1)
 #   - -p, --path - Local clone path (default: ~/Documents/repos)
-#   - -h, --host - GitHub Enterprise host (default: github.ibm.com)
+#   - -h, --host - GitHub Enterprise host (from DEMO_REPO_TARGETS or CLI)
 #   - -t, --template - Template number or ORG/REPO (interactive menu if omitted)
 #   - -v, --visibility - public/private (default: public)
 
@@ -24,12 +24,9 @@
 
 #   Pre-flight checks:
 #   - Verifies gh CLI is installed
-#   - Checks authentication via GH_ENTERPRISE_TOKEN env var or existing gh auth
+#   - Checks gh authentication for target and template hosts
 #   - Confirms template repo exists
 #   - Creates clone directory if needed
-
-#   Authentication: Set GH_ENTERPRISE_TOKEN before running, or run gh auth
-#   login -h github.ibm.com first.
 
 set -e
 
@@ -52,17 +49,6 @@ typeset -r C_RESET="\033[0m"
 typeset -r C_BG_SUBTLE="\033[48;5;236m"
 
 SCRIPT_START_TIME=$EPOCHSECONDS
-
-# ─── Token Resolution ────────────────────────────────────────────────────────
-# GH_TOKEN is the highest-priority env var for gh CLI and works for ANY host.
-# GITHUB_TOKEN and GH_ENTERPRISE_TOKEN are also accepted.
-if [[ -z "${GH_TOKEN:-}" ]]; then
-    if [[ -n "${GITHUB_TOKEN:-}" ]]; then
-        export GH_TOKEN="$GITHUB_TOKEN"
-    elif [[ -n "${GH_ENTERPRISE_TOKEN:-}" ]]; then
-        export GH_TOKEN="$GH_ENTERPRISE_TOKEN"
-    fi
-fi
 
 # Ensure cursor visible and spinner killed on exit/interrupt
 trap 'printf "\e[?25h"; [[ -n "$_SPIN_PID" ]] && kill "$_SPIN_PID" 2>/dev/null' EXIT INT TERM
@@ -275,8 +261,8 @@ interactive_menu() {
 # Env vars:
 #   DEMO_REPO_TARGETS    — comma-separated HOST::ACCOUNT pairs
 #   DEMO_REPO_TEMPLATES  — comma-separated template entries (ORG/REPO or HOST::ORG/REPO)
-GITHUB_HOST="${GITHUB_HOST:-github.ibm.com}"
-GITHUB_ACCOUNT="${GITHUB_ACCOUNT:-Aaron-Evans2}"
+GITHUB_HOST="${GITHUB_HOST:-}"
+GITHUB_ACCOUNT="${GITHUB_ACCOUNT:-}"
 CLONE_BASE_PATH="${CLONE_BASE_PATH:-$HOME/Documents/repos}"
 REPO_COUNT="${REPO_COUNT:-1}"
 REPO_VISIBILITY="${REPO_VISIBILITY:-public}"
@@ -288,7 +274,7 @@ if [[ -n "$DEMO_REPO_TEMPLATES" ]]; then
     IFS=',' read -rA TEMPLATES <<< "$DEMO_REPO_TEMPLATES"
 else
     printf "\n  ${C_RED}✖${C_RESET} ${C_WHITE}DEMO_REPO_TEMPLATES${C_RESET} env var is not set.\n" >&2
-    printf "    ${C_DIM}Run: ./ai/setup-demo-env.zsh${C_RESET}\n\n" >&2
+    printf "    ${C_DIM}Run: ./setup-demo-env.zsh${C_RESET}\n\n" >&2
     exit 1
 fi
 
@@ -308,8 +294,16 @@ if [[ -n "$DEMO_REPO_TARGETS" ]]; then
     IFS=',' read -rA KNOWN_TARGETS <<< "$DEMO_REPO_TARGETS"
 else
     printf "\n  ${C_RED}✖${C_RESET} ${C_WHITE}DEMO_REPO_TARGETS${C_RESET} env var is not set.\n" >&2
-    printf "    ${C_DIM}Run: ./ai/setup-demo-env.zsh${C_RESET}\n\n" >&2
+    printf "    ${C_DIM}Run: ./setup-demo-env.zsh${C_RESET}\n\n" >&2
     exit 1
+fi
+
+# Derive GITHUB_HOST/GITHUB_ACCOUNT from first target if not set via env/CLI
+if [[ -z "$GITHUB_HOST" || -z "$GITHUB_ACCOUNT" ]]; then
+    _first="${KNOWN_TARGETS[1]}"
+    [[ -z "$GITHUB_HOST" ]] && GITHUB_HOST="${_first%%::*}"
+    [[ -z "$GITHUB_ACCOUNT" ]] && GITHUB_ACCOUNT="${_first#*::}"
+    unset _first
 fi
 
 # =============================================================================
@@ -328,11 +322,11 @@ usage() {
     echo "" >&2
     printf "  ${C_CYAN}▎${C_RESET} ${C_PURPLE}${C_BOLD}Options${C_RESET}\n" >&2
     echo "" >&2
-    printf "    ${C_CYAN}-a${C_RESET}, ${C_CYAN}--account${C_RESET} ${C_DIM}NAME${C_RESET}          Target account ${C_DIMMER}(default: ${GITHUB_ACCOUNT})${C_RESET}\n" >&2
+    printf "    ${C_CYAN}-a${C_RESET}, ${C_CYAN}--account${C_RESET} ${C_DIM}NAME${C_RESET}          Target account ${C_DIMMER}(default: first DEMO_REPO_TARGETS entry)${C_RESET}\n" >&2
     printf "    ${C_CYAN}-n${C_RESET}, ${C_CYAN}--name${C_RESET} ${C_DIM}BASE_NAME${C_RESET}        Base repo name ${C_DIMMER}(auto-derived from template)${C_RESET}\n" >&2
     printf "    ${C_CYAN}-c${C_RESET}, ${C_CYAN}--count${C_RESET} ${C_DIM}NUMBER${C_RESET}          Number of repos ${C_DIMMER}(default: ${REPO_COUNT})${C_RESET}\n" >&2
     printf "    ${C_CYAN}-p${C_RESET}, ${C_CYAN}--path${C_RESET} ${C_DIM}PATH${C_RESET}             Clone location ${C_DIMMER}(default: ${CLONE_BASE_PATH})${C_RESET}\n" >&2
-    printf "    ${C_CYAN}-h${C_RESET}, ${C_CYAN}--host${C_RESET} ${C_DIM}HOST${C_RESET}             GHE hostname ${C_DIMMER}(default: ${GITHUB_HOST})${C_RESET}\n" >&2
+    printf "    ${C_CYAN}-h${C_RESET}, ${C_CYAN}--host${C_RESET} ${C_DIM}HOST${C_RESET}             GHE hostname ${C_DIMMER}(default: first DEMO_REPO_TARGETS entry)${C_RESET}\n" >&2
     printf "    ${C_CYAN}-t${C_RESET}, ${C_CYAN}--template${C_RESET} ${C_DIM}NUM|ORG/REPO${C_RESET}  Template selection\n" >&2
     printf "    ${C_CYAN}-v${C_RESET}, ${C_CYAN}--visibility${C_RESET} ${C_DIM}TYPE${C_RESET}        public/private ${C_DIMMER}(default: ${REPO_VISIBILITY})${C_RESET}\n" >&2
     printf "    ${C_CYAN}--help${C_RESET}                       Show this help\n" >&2
