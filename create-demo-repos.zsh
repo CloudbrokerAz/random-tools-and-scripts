@@ -53,6 +53,17 @@ typeset -r C_BG_SUBTLE="\033[48;5;236m"
 
 SCRIPT_START_TIME=$EPOCHSECONDS
 
+# ─── Token Resolution ────────────────────────────────────────────────────────
+# GH_TOKEN is the highest-priority env var for gh CLI and works for ANY host.
+# GITHUB_TOKEN and GH_ENTERPRISE_TOKEN are also accepted.
+if [[ -z "${GH_TOKEN:-}" ]]; then
+    if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+        export GH_TOKEN="$GITHUB_TOKEN"
+    elif [[ -n "${GH_ENTERPRISE_TOKEN:-}" ]]; then
+        export GH_TOKEN="$GH_ENTERPRISE_TOKEN"
+    fi
+fi
+
 # Ensure cursor visible and spinner killed on exit/interrupt
 trap 'printf "\e[?25h"; [[ -n "$_SPIN_PID" ]] && kill "$_SPIN_PID" 2>/dev/null' EXIT INT TERM
 
