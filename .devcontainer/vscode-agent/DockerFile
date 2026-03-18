@@ -1,0 +1,13 @@
+FROM srlynch1/terraform-ai-tools:latest
+
+RUN npm install -g @github/copilot && \
+    npm cache clean --force
+
+# Install pre-commit (base image has uv but not pre-commit)
+RUN uv tool install pre-commit --with pre-commit-uv
+
+# Wrapper functions: unset GH_TOKEN/GITHUB_TOKEN only for the copilot process
+# so copilot uses OAuth (/login) instead of rejecting classic PATs
+RUN echo 'copilot() { (unset GH_TOKEN GITHUB_TOKEN && command copilot "$@"); }' >> /home/node/.zshrc && \
+    echo 'copiloty() { (unset GH_TOKEN GITHUB_TOKEN && command copilot --yolo --disable-builtin-mcps "$@"); }' >> /home/node/.zshrc && \
+    chown node:node /home/node/.zshrc

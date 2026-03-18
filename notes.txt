@@ -1,0 +1,145 @@
+Add TFE_TOKEN_DEPENDABOT
+add ANTHROPIC_API_KEY
+add TFE_TOKEN
+
+
+Now to address your second question about meaningful module       
+  changes for different demo scenarios:                           
+                                                                          
+  ---                                                                     
+  The current script makes a trivial comment change (# Demo trigger: patch
+   bump...). That's fine for the patch scenario in trigger-bump.sh. But if
+   you want the module change itself to drive more interesting downstream
+  behaviour, here are concrete changes you could make to
+  terraform-aws-s3-bucket that map to each scenario:
+
+  Patch — safe, no consumer impact
+
+  - What the script does now (trivial comment) is perfect
+  - The consumer sees a version bump, plan shows changes (new module
+  source hash), AI says "low risk, auto-merge"
+
+  Minor — new feature, consumer could adopt it
+
+  A real change that would make the downstream AI analysis interesting:
+  - Add a new variable to the module (e.g. object_lock_enabled = false
+  with a default) — the consumer doesn't use it, so plan still succeeds,
+  but the AI can flag "new capability available"
+  - Add a new output (e.g. s3_bucket_bucket_domain_name) — the minor
+  scenario in trigger-bump.sh already adds a consumer output referencing
+  this, which would now actually work against the real module
+
+  Breaking / Major — forces consumer code changes
+
+  - Remove or rename an output that the consumer references (e.g. if
+  s3_bucket_arn was removed, the consumer's outputs.tf would break at plan
+   time → exit code 1 → breaking-change path)
+  - Add a required variable with no default — consumer plan fails because
+  the new variable isn't provided
+  - Change a variable type (e.g. force_destroy from bool to object) —
+  consumer plan fails on type mismatch
+
+  For a realistic demo, I'd suggest keeping publish-module-version.sh
+  doing the trivial change (it's the safe default), and relying on the
+  --scenario flag in trigger-bump.sh to simulate what different module
+  changes would look like from the consumer side. The scenarios in
+  trigger-bump.sh already modify the consumer code to mimic these effects
+  (adds a bad output for breaking, adds logging config for minor, etc.).
+
+  But if you want to go fully realistic where the actual module change
+  drives the scenario (not simulated in consumer code), you'd need to:
+  1. Make a real breaking change to the module repo
+  2. Publish it as a --bump major
+  3. Have trigger-bump.sh just do a version constraint bump (no extra
+  consumer changes)
+  4. The plan failure comes from the real incompatibility
+
+  Want me to add a --change flag to publish-module-version.sh that makes
+  different types of real module changes (beyond the trivial comment) for
+  each scenario?
+
+
+
+
+
+  
+
+
+
+
+   Question 3: What triggered the action?  
+                                                                                                      
+  The demo script trigger-bump.sh triggered it, NOT Dependabot.                                       
+                                              
+  The run metadata shows:                                                                             
+  - event: "pull_request"                      
+  - triggering_actor: "CloudbrokerAz" (you, not Dependabot)                                           
+  - head_branch: "dependabot/terraform/s3-bucket-5.8.6-7811"                                          
+                                                                                                      
+  trigger-bump.sh (line 93) deliberately creates branches named dependabot/terraform/... to mimic     
+  Dependabot PRs. The workflow filter at line 32-33 accepts branches matching either
+  dependabot/terraform/ or module-update/:                                                            
+   
+  startsWith(github.head_ref, 'dependabot/terraform/') ||                                             
+  startsWith(github.head_ref, 'module-update/')
+                                                                                                      
+  So the demo scripts are simulating what Dependabot would do as the entry point. In production,
+  Dependabot (configured in .github/dependabot.yml) would create the PR with that branch prefix,      
+  triggering the same pipeline. The fallback scanner (scan-module-versions.sh) uses module-update/
+  prefix instead.
+
+
+
+
+
+
+  I have been testing specs/feat-consumer-uplift/demo which is based on specs/feat-consumer-uplift/consumer-uplift-workflow.html & specs/feat-consumer-uplift/implementation-plan.md 
+  the repo we are using for testing is https://github.com/hashi-demo-lab/terraform-agentic-workflows-demo05
+
+   https://github.com/hashi-demo-lab/terraform-agentic-workflows-demo05/actions/runs/22995910831/job/66767966651
+
+
+  ❯ what is this about?                                                                    
+Source    Fallback Scanner / Manual                                                      
+                                                                                         
+when running the Classify job in the workflow??                                          
+                                                                                         
+explain this aspect of the flow                                                          
+  ⎿  ⧉ Selected 2 lines from Untitled-1 in Visual Studio Code
+
+● Let me trace through the code to explain.
+
+● Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+● Here's the flow:
+
+  The pipeline accepts PRs from two sources (line 32-33 of the workflow):
+
+  1. dependabot/terraform/* — PRs created by Dependabot. It scans the private registry
+  monthly (configured in .github/dependabot.yml) and opens PRs when new module versions
+  are detected.
+  2. module-update/* — PRs created by the fallback scanner (scan-module-versions.sh).
+  This exists because Dependabot has blind spots — it can miss submodule paths like
+  cloudwatch//modules/metric-alarm. The scanner queries the TFC API directly and creates
+  PRs in the same format.
+
+  The "Source" field in the step summary is just a label showing which path created the
+  PR. The classify-version-bump.sh script checks if the branch name starts with
+  dependabot/ — if yes, it's Dependabot; if not, it's "Fallback Scanner / Manual".
+
+  In your demo, trigger-bump.sh creates branches with dependabot/terraform/ prefix, so it
+   should show "Dependabot". If you're seeing "Fallback Scanner / Manual", the branch
+  name likely didn't match the dependabot/* pattern — maybe it was created with a
+  module-update/ prefix or something else.
+
+  The distinction is cosmetic for the pipeline — both sources go through the exact same
+  Jobs 1-4. It's just an audit trail so you know how the version bump was detected.
+
+
+
+
+
+
+
+
+Any DESTROY/REPLACE = 

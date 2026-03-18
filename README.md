@@ -92,6 +92,8 @@ Creates demo repositories by cloning a template (all branches and tags) and push
 
 Repos are numbered sequentially (e.g., `ai-iac-consumer-demo01`, `demo02`, ...). The script auto-detects existing repos and starts numbering from the next available slot.
 
+When exactly one repo is created, the script now opens it automatically in VS Code. If the cloned repo contains a standard devcontainer config (`.devcontainer/devcontainer.json` or `.devcontainer.json`) and the Dev Containers extension is installed, it opens directly in the dev container instead of first opening the local folder and prompting to reopen.
+
 ## Delete — `delete-demo-repos.zsh`
 
 Deletes demo repositories both remotely (via `gh`) and locally (the cloned directory).

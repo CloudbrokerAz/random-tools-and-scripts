@@ -618,6 +618,87 @@ create_repo() {
     printf "    ${C_GREEN}${C_BOLD}✔ Done${C_RESET}  ${C_CYAN}%s${C_RESET} ${C_DIMMER}→${C_RESET} ${C_DIM}%s${C_RESET}\n" "$repo_full" "$local_path" >&2
 }
 
+has_devcontainer_config() {
+    local repo_path="$1"
+    [[ -f "$repo_path/.devcontainer/devcontainer.json" || -f "$repo_path/.devcontainer.json" ]]
+}
+
+find_devcontainer_spec_cli() {
+    local -a cli_candidates=(
+        $HOME/.vscode/extensions/ms-vscode-remote.remote-containers-*/dev-containers-user-cli/dist/spec-node/devContainersSpecCLI.js(N)
+    )
+
+    if (( ${#cli_candidates[@]} == 0 )); then
+        return 1
+    fi
+
+    echo "${cli_candidates[-1]}"
+}
+
+resolve_remote_workspace_folder() {
+    local repo_path="$1"
+    local spec_cli_path="$2"
+    local config_json=""
+
+    config_json=$(node "$spec_cli_path" read-configuration \
+        --workspace-folder "$repo_path" \
+        --log-format json 2>/dev/null) || return 1
+
+    node -e '
+const fs = require("fs");
+const input = fs.readFileSync(0, "utf8").trim();
+if (!input) {
+    process.exit(1);
+}
+const parsed = JSON.parse(input);
+const remoteWorkspaceFolder =
+    parsed.workspace?.remoteWorkspaceFolder ||
+    parsed.configuration?.workspaceFolder ||
+    parsed.workspace?.workspaceFolder;
+if (!remoteWorkspaceFolder) {
+    process.exit(1);
+}
+process.stdout.write(remoteWorkspaceFolder);
+' <<< "$config_json"
+}
+
+open_repo_in_vscode() {
+    local repo_path="$1"
+
+    if ! command -v code &> /dev/null; then
+        log_warn "VS Code CLI (code) is not installed — skipping auto-open"
+        return 0
+    fi
+
+    if has_devcontainer_config "$repo_path"; then
+        local spec_cli_path=""
+        local remote_workspace_folder=""
+        local folder_uri=""
+
+        if spec_cli_path=$(find_devcontainer_spec_cli) && \
+           remote_workspace_folder=$(resolve_remote_workspace_folder "$repo_path" "$spec_cli_path"); then
+            [[ "$remote_workspace_folder" == /* ]] || remote_workspace_folder="/$remote_workspace_folder"
+
+            folder_uri=$(node -e '
+const [hostPath, remoteWorkspaceFolder] = process.argv.slice(1);
+const authority = Buffer.from(hostPath, "utf8").toString("hex");
+process.stdout.write(`vscode-remote://dev-container+${authority}${remoteWorkspaceFolder}`);
+' "$repo_path" "$remote_workspace_folder")
+
+            if [[ -n "$folder_uri" ]]; then
+                log_info "Opening in VS Code Dev Container..."
+                code --folder-uri "$folder_uri"
+                return 0
+            fi
+        fi
+
+        log_warn "Could not resolve Dev Container workspace — opening local folder instead"
+    fi
+
+    log_info "Opening in VS Code..."
+    code "$repo_path"
+}
+
 # =============================================================================
 # MAIN
 # =============================================================================
@@ -691,16 +772,9 @@ main() {
     printf "  ${C_DIMMER}·${C_RESET}  ${C_DIM}%s elapsed${C_RESET}\n" "$(elapsed_time)" >&2
     echo "" >&2
 
-    # Offer to open in VS Code (interactive menu if exactly 1 repo was created)
+    # Automatically open the newly created repo when exactly one was created.
     if [[ "$created" -eq 1 && -n "$last_created_path" ]]; then
-        interactive_menu "Open in VS Code?" \
-            "Yes, open ${last_created_path##*/}" \
-            "No thanks"
-
-        if [[ $MENU_RESULT -eq 1 ]]; then
-            log_info "Opening in VS Code..."
-            code "$last_created_path"
-        fi
+        open_repo_in_vscode "$last_created_path"
     fi
 
     echo "" >&2
