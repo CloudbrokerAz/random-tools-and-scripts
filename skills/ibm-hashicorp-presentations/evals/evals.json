@@ -1,0 +1,23 @@
+{
+  "skill_name": "ibm-hashicorp-presentations",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Create a 10-slide presentation about HashiCorp Terraform for IBM Cloud. Target audience is enterprise IT leaders evaluating infrastructure as code. Cover what Terraform is, key benefits, IBM Cloud provider capabilities, a customer success story with metrics, and next steps. Make it professional and on-brand.",
+      "expected_output": "A complete .pptx file with ~10 slides using IBM brand template, cover slide, section dividers, content slides with appropriate layouts, data slides with metrics, and IBM end slide",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Build a short 6-slide deck introducing HashiCorp Vault secrets management to a security team. Include an overview of what Vault does, key features (dynamic secrets, encryption as a service, identity-based access), a comparison of Vault vs traditional secrets management, and a call to action. Use data callouts for key security statistics.",
+      "expected_output": "A complete .pptx file with ~6 slides using IBM brand template, appropriate use of data layouts for statistics, proper HashiCorp/IBM color usage, and professional layout choices",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "I need a presentation about the full HashiCorp stack on IBM Cloud — Terraform, Vault, Consul, and Nomad working together. About 12 slides. Show how they integrate, include an architecture diagram slide placeholder, team contact slide with 3 people, and a comparison grid of the products. This is for a technical workshop audience.",
+      "expected_output": "A complete .pptx file with ~12 slides covering multiple HashiCorp products, using box/grid layouts for comparison, media layout for architecture diagram, contacts layout for team, and varied content layouts throughout",
+      "files": []
+    }
+  ]
+}
