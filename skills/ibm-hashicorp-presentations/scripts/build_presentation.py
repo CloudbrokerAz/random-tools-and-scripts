@@ -26,9 +26,12 @@ import zipfile
 from pathlib import Path
 from typing import Any, Optional
 
+from lxml import etree
 from pptx import Presentation
 from pptx.dml.color import RGBColor
-from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
+from pptx.enum.shapes import MSO_SHAPE
+from pptx.enum.text import PP_ALIGN, MSO_ANCHOR, MSO_AUTO_SIZE
+from pptx.oxml.ns import qn
 from pptx.util import Inches, Pt, Emu
 
 # ---------------------------------------------------------------------------
@@ -145,10 +148,10 @@ LAYOUT_META: dict[int, dict[str, Any]] = {
         "category": "data",
         "placeholders": {
             0: "title",
-            11: "data_value_1", 15: "data_label_1",
-            12: "data_value_2", 16: "data_label_2",
-            13: "data_value_3", 17: "data_label_3",
-            14: "body",
+            15: "data_label_1", 12: "data_value_1",
+            16: "data_label_2", 13: "data_value_2",
+            17: "data_label_3", 14: "data_value_3",
+            11: "body",
             18: "footer", 4: "slide_number",
         },
     },
@@ -167,10 +170,10 @@ LAYOUT_META: dict[int, dict[str, Any]] = {
         "category": "data",
         "placeholders": {
             0: "title",
-            11: "data_value_1", 15: "data_label_1",
-            12: "data_value_2", 16: "data_label_2",
-            13: "data_value_3", 17: "data_label_3",
-            14: "body",
+            15: "data_label_1", 12: "data_value_1",
+            16: "data_label_2", 13: "data_value_2",
+            17: "data_label_3", 14: "data_value_3",
+            11: "body",
             18: "footer", 4: "slide_number",
         },
     },
@@ -539,6 +542,144 @@ def parse_color(color_str: str) -> RGBColor:
 
 
 # ---------------------------------------------------------------------------
+# Visual enhancement helpers
+# ---------------------------------------------------------------------------
+
+def _add_accent_bar(slide, x, y, width, height, color):
+    """Add a solid colored accent bar (rectangle with no border)."""
+    shape = slide.shapes.add_shape(
+        MSO_SHAPE.RECTANGLE,
+        Inches(x), Inches(y), Inches(width), Inches(height)
+    )
+    shape.fill.solid()
+    shape.fill.fore_color.rgb = color
+    shape.line.fill.background()
+    return shape
+
+
+NAMED_BACKGROUNDS = {
+    "white": "#FFFFFF",
+    "cyan_10": "#E5F6FF",
+    "cyan_20": "#BAE6FF",
+    "gray_10": "#F4F4F4",
+    "gray_100": "#161616",
+    "blue_90": "#001D6C",
+}
+
+
+def _set_slide_background(slide, color_spec):
+    """Set slide background to a solid color. Accepts named colors or hex."""
+    color_hex = NAMED_BACKGROUNDS.get(color_spec, color_spec)
+    fill = slide.background.fill
+    fill.solid()
+    fill.fore_color.rgb = parse_color(color_hex)
+
+
+def _add_overlay_images(slide, overlays, base_dir):
+    """Add freeform images at specified absolute positions on the slide."""
+    for overlay in overlays:
+        try:
+            img_path = _resolve_image_path(overlay["image"], base_dir)
+            slide.shapes.add_picture(
+                str(img_path),
+                Inches(overlay.get("x", 0)),
+                Inches(overlay.get("y", 0)),
+                Inches(overlay.get("width", 1)),
+                Inches(overlay.get("height", 1))
+            )
+        except Exception as e:
+            print(f"  WARNING: Could not add overlay image {overlay.get('image')}: {e}", file=sys.stderr)
+
+
+IBM_GRAY_20 = RGBColor(0xE0, 0xE0, 0xE0)
+
+
+def _add_divider_line(slide, x, y, length, orientation="vertical", color=None):
+    """Add a thin 1pt divider line."""
+    if color is None:
+        color = IBM_GRAY_20
+    elif isinstance(color, str):
+        color = parse_color(color)
+    if orientation == "vertical":
+        shape = slide.shapes.add_shape(
+            MSO_SHAPE.RECTANGLE,
+            Inches(x), Inches(y), Pt(1), Inches(length)
+        )
+    else:
+        shape = slide.shapes.add_shape(
+            MSO_SHAPE.RECTANGLE,
+            Inches(x), Inches(y), Inches(length), Pt(1)
+        )
+    shape.fill.solid()
+    shape.fill.fore_color.rgb = color
+    shape.line.fill.background()
+    return shape
+
+
+def _add_callout_shape(slide, x, y, width, height, fill_color, border_color=None, text=None):
+    """Add a rounded rectangle callout/highlight shape."""
+    shape = slide.shapes.add_shape(
+        MSO_SHAPE.ROUNDED_RECTANGLE,
+        Inches(x), Inches(y), Inches(width), Inches(height)
+    )
+    shape.fill.solid()
+    shape.fill.fore_color.rgb = fill_color if isinstance(fill_color, RGBColor) else parse_color(fill_color)
+    if border_color:
+        bc = border_color if isinstance(border_color, RGBColor) else parse_color(border_color)
+        shape.line.color.rgb = bc
+        shape.line.width = Pt(1)
+    else:
+        shape.line.fill.background()
+    if text:
+        tf = shape.text_frame
+        tf.word_wrap = True
+        p = tf.paragraphs[0]
+        run = p.add_run()
+        run.text = text
+        run.font.name = IBM_FONT
+        run.font.size = Pt(11)
+    return shape
+
+
+def _add_visuals(slide, visuals, base_dir):
+    """Render and place data visualizations on the slide."""
+    try:
+        from .svg_visuals import render_visual
+    except ImportError:
+        try:
+            # Try relative import for when running as script
+            svg_visuals_path = Path(__file__).parent / "svg_visuals.py"
+            if svg_visuals_path.exists():
+                import importlib.util
+                spec = importlib.util.spec_from_file_location("svg_visuals", svg_visuals_path)
+                svg_visuals = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(svg_visuals)
+                render_visual = svg_visuals.render_visual
+            else:
+                print("  WARNING: svg_visuals.py not found, skipping visuals", file=sys.stderr)
+                return
+        except Exception as e:
+            print(f"  WARNING: Could not import svg_visuals: {e}", file=sys.stderr)
+            return
+
+    for vis in visuals:
+        try:
+            png_bytes = render_visual(vis)
+            if png_bytes:
+                import io
+                img_stream = io.BytesIO(png_bytes)
+                slide.shapes.add_picture(
+                    img_stream,
+                    Inches(vis.get("x", 0)),
+                    Inches(vis.get("y", 0)),
+                    Inches(vis.get("width", 2)),
+                    Inches(vis.get("height", 2))
+                )
+        except Exception as e:
+            print(f"  WARNING: Could not render visual {vis.get('type')}: {e}", file=sys.stderr)
+
+
+# ---------------------------------------------------------------------------
 # Text formatting helpers
 # ---------------------------------------------------------------------------
 
@@ -552,8 +693,25 @@ def _set_text_with_font(
     alignment: Optional[PP_ALIGN] = None,
 ):
     """Set the text of a text frame, clearing existing content and applying formatting."""
+    # Snapshot inherited paragraph properties before clearing
+    try:
+        first_pPr = text_frame.paragraphs[0]._p.find(qn('a:pPr'))
+        inherited_pPr = copy.deepcopy(first_pPr) if first_pPr is not None else None
+    except Exception:
+        inherited_pPr = None
+
     text_frame.clear()
+    text_frame.word_wrap = True
+
     p = text_frame.paragraphs[0]
+
+    # Restore inherited paragraph properties
+    if inherited_pPr is not None:
+        try:
+            p._p.insert(0, inherited_pPr)
+        except Exception:
+            pass
+
     if alignment is not None:
         p.alignment = alignment
     run = p.add_run()
@@ -582,6 +740,16 @@ def _set_bullets(
         else:
             p = text_frame.add_paragraph()
         p.level = 0
+
+        # Add bullet character and spacing
+        pPr = p._p.get_or_add_pPr()
+        buChar = etree.SubElement(pPr, qn('a:buChar'))
+        buChar.set('char', '\u2022')
+        # Add space after each bullet paragraph
+        spcAft = etree.SubElement(pPr, qn('a:spcAft'))
+        spcPts = etree.SubElement(spcAft, qn('a:spcPts'))
+        spcPts.set('val', '600')  # 6pt spacing after
+
         run = p.add_run()
         run.text = item
         run.font.name = font_name
@@ -1060,6 +1228,44 @@ def build_slide(prs: Presentation, slide_spec: dict, base_dir: Optional[Path] = 
         builder = CATEGORY_BUILDERS.get(category)
         if builder:
             builder(slide, slide_spec, meta, base_dir=base_dir, text_color=text_color)
+
+    # --- Visual Enhancement Layer ---
+    if slide_spec.get("background"):
+        _set_slide_background(slide, slide_spec["background"])
+
+    # Accent color for auto-generated accent bars
+    accent_color = None
+    if slide_spec.get("accent_color"):
+        accent_color = parse_color(slide_spec["accent_color"])
+
+    # Explicit accent bars
+    if slide_spec.get("accent_bars"):
+        for bar in slide_spec["accent_bars"]:
+            _add_accent_bar(slide, bar["x"], bar["y"], bar["width"], bar["height"],
+                           parse_color(bar["color"]))
+
+    # Freeform image overlays
+    if slide_spec.get("overlays"):
+        _add_overlay_images(slide, slide_spec["overlays"], base_dir)
+
+    # Divider lines
+    if slide_spec.get("dividers"):
+        for d in slide_spec["dividers"]:
+            _add_divider_line(slide, d["x"], d["y"], d["length"],
+                            d.get("orientation", "vertical"),
+                            parse_color(d["color"]) if d.get("color") else None)
+
+    # Callout/highlight shapes
+    if slide_spec.get("callouts"):
+        for c in slide_spec["callouts"]:
+            _add_callout_shape(slide, c["x"], c["y"], c["width"], c["height"],
+                              c["fill"],
+                              c.get("border"),
+                              c.get("text"))
+
+    # Data visualizations
+    if slide_spec.get("visuals"):
+        _add_visuals(slide, slide_spec["visuals"], base_dir)
 
     # Speaker notes
     if slide_spec.get("notes"):

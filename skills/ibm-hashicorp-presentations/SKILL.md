@@ -16,27 +16,43 @@ description: >
 
 # IBM/HashiCorp Presentation Builder
 
-Create IBM-branded PowerPoint presentations using python-pptx, following the IBM Design Language and Carbon Design System standards. Presentations use the official IBM POTX template as a base and can leverage all 49 slide layouts.
-
-## How It Works
-
-The skill uses three components:
-
-1. **POTX Template** -- `resources/templates/IBM_presentation_brand_covers_v_2_1_Plex_embed.potx` (base template with IBM Plex Sans embedded)
-2. **Builder Script** -- `scripts/build_presentation.py` (programmatic PPTX generation via python-pptx)
-3. **Brand Assets** -- `resources/` directory (images, icons, logos, pictograms) -- see `resources/MANIFEST.md` for the full catalog
+Create IBM-branded PowerPoint presentations using python-pptx, the official IBM POTX template, and a visual enhancement layer that adds accent bars, data visualizations, icon overlays, and callout shapes. Three components drive every deck: the POTX template (brand layouts and embedded IBM Plex Sans), the builder script (`scripts/build_presentation.py`), and the brand asset library in `resources/` (see `resources/MANIFEST.md`).
 
 ## Workflow
 
-1. Understand the presentation topic, audience, and length
-2. Plan the slide structure (10-20 slides for a standard presentation)
-3. Select appropriate layouts for each slide from the 49 available (see reference below)
-4. Build a JSON slide specification
-5. Run `scripts/build_presentation.py` to generate the PPTX
+1. Understand the presentation topic, audience, and target length
+2. Plan slide structure with visual variety -- alternate layouts, backgrounds, and enhancement types
+3. Build a JSON slide specification with visual enhancements on every content slide
+4. Run `scripts/build_presentation.py` to generate the PPTX
+
+## Visual Design Principles
+
+These rules are mandatory. Every generated deck must follow them.
+
+- **Every content slide must have at least one visual element beyond text** -- an accent bar, icon overlay, callout shape, data visualization, or background color change. Plain white slides with only text are never acceptable.
+- **Alternate backgrounds** every 3-4 slides: white -> cyan_10 (`#E5F6FF`) -> white -> gray_10 (`#F4F4F4`). This creates visual rhythm and prevents monotony.
+- **Use accent bars** on data slides (above each metric), box layouts (top of each card), and section dividers. Accent bars are the single highest-impact visual element available.
+- **Include a data visualization** (progress ring, horizontal bars, process flow) every 2-3 slides where the content includes quantitative data.
+- **Place pictograms/icons** on feature and comparison slides using the `overlays` field. See `resources/MANIFEST.md` for available PNG assets.
+- **Never exceed 5 bullets** per column. Keep bullet text under 60 characters.
+- **Use the callouts field** for bottom-of-slide takeaway bars with tinted backgrounds.
+- **Minimum font size: 9pt** -- anything smaller is unreadable when projected.
+
+## Typography Rules
+
+| Element | Font | Max ~chars | Notes |
+|---------|------|-----------|-------|
+| Title | IBM Plex Sans Light | ~50 | Wraps to 2 lines beyond this |
+| Body/bullets | IBM Plex Sans Light | ~80 per line | 60 in narrow columns |
+| Data value | IBM Plex Sans | ~10 | Large display numbers |
+| Labels | IBM Plex Sans | ~30 | Uppercase, letter-spaced |
+| Minimum font | -- | -- | 9pt absolute minimum |
+
+All text: left-aligned, sentence case, IBM Plex Sans only.
 
 ## Slide Layout Reference
 
-All 49 layouts from the IBM template. Consult this when choosing layouts for each slide.
+All 49 layouts from the IBM template. Slide dimensions are **26.67" x 15.00"** (non-standard large format). Content area starts at ~0.63" from edges.
 
 ### Cover Layouts (0-5)
 
@@ -127,63 +143,39 @@ All 49 layouts from the IBM template. Consult this when choosing layouts for eac
 | 47 | End slide | IBM logo only (centered) |
 | 48 | DEFAULT | Empty layout |
 
-## IBM Design Language Reference
+## Layout Selection Guide
 
-### Color Palette (Carbon Design System)
+Choose layouts based on content type, then add visual enhancements:
 
-**Primary:**
-- IBM Blue 60: `#0F62FE` (primary brand blue)
+- **Key statistic or quote**: Callout (9-10) or Data (11-14) with accent bars above each number
+- **Feature comparison (2-4 items)**: Box layouts (26-34) with icon overlays in each cell
+- **Process or feature list**: Text column layouts (15-25) with pictograms via overlays
+- **Architecture diagram**: Media layouts (35-39) with an image
+- **Contact/team info**: Layout 40 with profile images
+- **Section transition**: Layout 7 with a background color change
+- **Opening impact**: Layout 8 (Large text) for hero quotes with a vertical accent bar
+- **Table or chart**: Layouts 41-42
+- **Legal/disclaimer**: Layouts 43-44
+
+## IBM Color Palette
+
+**Primary:** IBM Blue 60: `#0F62FE`
 
 **Theme Accents:**
-- Purple 50: `#A56EFF`
-- Cyan 80: `#003A6D`
-- Teal 50: `#009D9A`
-- Magenta 70: `#9F1853`
-- Red 50: `#FA4D56`
+- Purple 50: `#A56EFF` | Cyan 80: `#003A6D` | Teal 50: `#009D9A`
+- Magenta 70: `#9F1853` | Red 50: `#FA4D56`
 
 **Backgrounds:**
-- White: `#FFFFFF`
-- Cyan 10: `#E5F6FF`
-- Cyan 20: `#BAE6FF`
-- Gray 10: `#F4F4F4`
+- White: `#FFFFFF` | Cyan 10: `#E5F6FF` | Cyan 20: `#BAE6FF` | Gray 10: `#F4F4F4`
 
 **Text:**
-- Black: `#000000`
-- Gray 100: `#161616`
-- Gray 90: `#262626`
+- Black: `#000000` | Gray 100: `#161616` | Gray 90: `#262626`
 
-**Full Gray Scale:** Gray 10 (`#F4F4F4`) through Gray 100 (`#161616`)
-**Full Blue Scale:** Blue 10 (`#EDF5FF`) through Blue 100 (`#001141`)
+**Full scales:** Gray 10 (`#F4F4F4`) through Gray 100 (`#161616`); Blue 10 (`#EDF5FF`) through Blue 100 (`#001141`)
 
-### Typography
+### HashiCorp Product Color Mapping
 
-All text uses **IBM Plex Sans** (embedded in the template).
-
-| Use | Weight | Size |
-|-----|--------|------|
-| Display / Hero | Extra Light | 84-168pt |
-| Section titles | Light | 86pt |
-| Standard titles | Light | ~50pt |
-| Body text | Light | 28pt |
-| Labels / captions | Regular | 14-16pt |
-
-Rules: always left-aligned, sentence case, no justified text.
-
-### Grid System
-
-| Property | Value |
-|----------|-------|
-| Content inset from edges | 0.63" |
-| Narrow column width | ~5.4" |
-| Wide column width | ~12.08" |
-| Column positions (left edges) | 0.63", 7.29", 13.96", 20.63" |
-| Divider line weight | 1.0pt solid |
-| Footer position | 14.02" from top |
-| Slide number position | Bottom-right at 25.75" |
-
-## HashiCorp Product Color Mapping
-
-When building slides about HashiCorp products, use the IBM palette equivalents:
+All HashiCorp products are now part of IBM. Use IBM brand colors, not original HashiCorp colors.
 
 | Product | Domain | IBM Color |
 |---------|--------|-----------|
@@ -196,43 +188,7 @@ When building slides about HashiCorp products, use the IBM palette equivalents:
 | Waypoint | Application Deployment | Teal 50 `#009D9A` |
 | Vagrant | Development Environments | Blue 60 `#0F62FE` |
 
-All HashiCorp products are now part of IBM. Use IBM brand colors rather than original HashiCorp product colors.
-
-## Recommended Presentation Structure
-
-A well-structured IBM presentation follows this pattern:
-
-1. **Cover slide** (layout 0-5) -- title, subtitle, date, author
-2. **Agenda / Contents** (layout 6) -- overview of sections
-3. **Section dividers** (layout 7) -- between major sections
-4. **Content slides** (layouts 9-34) -- main content, use layouts matching the content type
-5. **Data / metrics slides** (layouts 11-14) -- statistics, KPIs, benchmarks
-6. **Media slides** (layouts 35-39) -- screenshots, architecture diagrams, demos
-7. **Contact / team slide** (layout 40) -- if applicable
-8. **Legal / disclaimer** (layout 43-44) -- if needed
-9. **End slide** (layout 47) -- always close with the IBM logo slide
-
-**Layout selection guidance:**
-- Comparing 2-4 items? Use box layouts (26-34)
-- Showing a process or feature list? Use text column layouts (15-25)
-- Presenting a key stat or quote? Use callout layouts (9-10) or data layouts (11-14)
-- Showing a screenshot or diagram? Use media layouts (35-39)
-- Need a table or chart? Use layouts 41-42
-
-## Available Resources
-
-See `resources/MANIFEST.md` for the complete asset catalog. Key assets:
-
-- **25 cover background images** (1920x1080) for imagery cover layouts
-- **6 Carbon-style SVG pictograms** with PNG fallbacks for column and box layouts
-- **5 Carbon Design System icons** (SVG + PNG) for inline use
-- **IBM 8-bar logo** in multiple formats (PNG, SVG)
-- **18 EMF pictogram vectors** for infographic-style slides
-- **Brand photography** in various aspect ratios
-
-## Script Reference
-
-The builder script at `scripts/build_presentation.py` accepts a JSON specification:
+## JSON Slide Specification Reference
 
 ```json
 {
@@ -241,10 +197,28 @@ The builder script at `scripts/build_presentation.py` accepts a JSON specificati
   "slides": [
     {
       "layout": 0,
-      "title": "Title Text",
-      "body": ["Body text 1", "Body text 2"],
+      "title": "Slide Title",
+      "body": ["Bullet 1", "Bullet 2"],
       "image": "path/to/image.png",
-      "notes": "Speaker notes"
+      "notes": "Speaker notes",
+
+      "background": "cyan_10",
+      "accent_color": "#0F62FE",
+      "accent_bars": [
+        {"x": 0.63, "y": 1.2, "width": 24.0, "height": 0.1, "color": "#0F62FE"}
+      ],
+      "overlays": [
+        {"image": "resources/icons/pptx_image70.png", "x": 1.0, "y": 2.0, "width": 1.33, "height": 1.33}
+      ],
+      "dividers": [
+        {"x": 13.33, "y": 3.0, "length": 9.0, "orientation": "vertical"}
+      ],
+      "callouts": [
+        {"x": 0.63, "y": 12.5, "width": 24.0, "height": 1.2, "fill": "#EDF5FF", "border": "#0F62FE", "text": "Key takeaway text here"}
+      ],
+      "visuals": [
+        {"type": "progress_ring", "value": 85, "max": 100, "color": "#0F62FE", "x": 5.0, "y": 4.0, "width": 4.0, "height": 4.0}
+      ]
     }
   ]
 }
@@ -254,31 +228,111 @@ The builder script at `scripts/build_presentation.py` accepts a JSON specificati
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `layout` | int | Layout index (0-48) from the reference above |
-| `title` | string | Slide title text |
-| `body` | string[] | Body text areas, mapped to placeholders in order |
-| `image` | string | Path to image file (relative to skill root) |
-| `notes` | string | Speaker notes for the slide |
+| `layout` | int | Layout index 0-48 |
+| `title` | string | Slide title |
+| `body` | string or string[] | Body text (string[] creates bullet list) |
+| `body_right` | string[] | Right column text (for 2-column layouts) |
+| `subtitle` | string | Subtitle or label text |
+| `image` | string | Path to image (for picture placeholders) |
+| `icons` | string[] | Paths to icons (for pictogram placeholders) |
+| `data_points` | object[] | Data with value/label (for data layouts) |
+| `profiles` | object[] | Contact info with name/role/image |
+| `table_data` | object | Table with headers/rows arrays |
+| `columns` | string[] | Column content (for 4-column layouts) |
+| `column_headings` | string[] | Column headers |
+| `boxes` | string[] | Box content (for grid layouts) |
+| `box_headings` | string[] | Box headers |
+| `notes` | string | Speaker notes |
+| **`background`** | string | Slide background: "white", "cyan_10", "gray_10", or hex |
+| **`accent_color`** | string | Hex color for accent elements |
+| **`accent_bars`** | object[] | Colored rectangles: {x, y, width, height, color} |
+| **`overlays`** | object[] | Freeform images: {image, x, y, width, height} |
+| **`dividers`** | object[] | Lines: {x, y, length, orientation, color} |
+| **`callouts`** | object[] | Highlight shapes: {x, y, width, height, fill, border, text} |
+| **`visuals`** | object[] | Data viz: {type, ...params, x, y, width, height} |
 
-### Running the Builder
+All position values (x, y, width, height, length) are in **inches** on the 26.67" x 15.00" slide canvas.
 
-```bash
-# From the skill directory
-python scripts/build_presentation.py spec.json
+## Visual Data Types Reference
 
-# Or pipe JSON directly
-echo '{"title": "Demo", "output_file": "demo.pptx", "slides": [...]}' | python scripts/build_presentation.py -
-```
+| Type | Params | Use Case |
+|------|--------|----------|
+| `progress_ring` | value, max, color, label | KPI gauges, completion percentages |
+| `horizontal_bars` | data[{label, value, color}] | Side-by-side comparisons |
+| `accent_gradient` | colors[] | Decorative color strips |
+| `process_flow` | steps[{label, sublabel, color}] | Step-by-step workflows |
+| `metric_card` | value, label, color | Standalone KPI display |
+| `icon_badge` | number, color | Numbered step indicators |
 
-The script loads the POTX template, iterates through the slide specs, applies content to the matching layout placeholders, inserts images, and writes the final PPTX.
+## Visual Recipe Patterns
+
+Use these recipes as starting points. Combine and adapt them to the content.
+
+### KPI Dashboard
+- Layout 45 (blank) with background `"gray_10"`
+- 3 `progress_ring` visuals positioned across the slide
+- Accent bar at top in blue (`#0F62FE`)
+- Each ring gets a `metric_card` below it
+- Callout bar at bottom with takeaway text
+
+### Comparison Grid
+- Layout 27 or 28 (4 stacked boxes)
+- Accent bars at top of each box area
+- Icon overlays (pictograms from `resources/icons/`) in each box
+- Background `"white"`
+
+### Process Flow
+- Layout 45 (blank) with `process_flow` visual spanning the width
+- Numbered step details below as callout shapes
+- Accent gradient bar at top
+
+### Feature Showcase
+- Layout 18 (4 columns with pictograms)
+- Icon overlays for each feature
+- Accent bars above each column
+- Callout bar at bottom
+
+### Quote / Impact Slide
+- Layout 8 (large text) with background `"cyan_10"`
+- Thick vertical accent bar at left edge
+- Large title text IS the quote
+
+### Data Highlight
+- Layout 12 (3 callouts vertical)
+- Accent bar above each data value
+- Background `"white"`
+- Callout bar at bottom with source citation
+
+## Available Resources
+
+See `resources/MANIFEST.md` for the full catalog. Most useful assets:
+
+- **25 cover background images** (1920x1080) -- `resources/images/potx_image*.png`
+- **6 SVG pictograms with PNG fallbacks** -- `resources/icons/pptx_image7[0-1].png` through `pptx_image81.svg`
+- **5 Carbon icons** (SVG + 64x64 PNG) -- `resources/icons/pptx_image89.png` through `pptx_image98.svg`
+- **IBM logo** -- `resources/images/potx_image2.png` (1584x632)
+- **Brand photography** in portrait, landscape, square, and panoramic sizes
+
+## Recommended Presentation Structure
+
+1. **Cover slide** (layout 0-5) -- title, subtitle, date, author
+2. **Agenda / Contents** (layout 6) -- overview of sections
+3. **Section dividers** (layout 7) -- between major sections, with background color change
+4. **Content slides** (layouts 9-34) -- main content with visual enhancements
+5. **Data / metrics slides** (layouts 11-14) -- statistics, KPIs, with accent bars and visuals
+6. **Media slides** (layouts 35-39) -- screenshots, architecture diagrams
+7. **Contact / team slide** (layout 40) -- if applicable
+8. **Legal / disclaimer** (layout 43-44) -- if needed
+9. **End slide** (layout 47) -- always close with the IBM logo slide
 
 ## Rules
 
-1. **Always use the IBM POTX template** -- never create presentations from scratch.
-2. **Use IBM brand colors only** -- never use original HashiCorp brand colors in IBM-context slides.
-3. **Left-align all text** -- no centered or justified text per IBM Design Language.
-4. **Sentence case for all headings** -- not Title Case or ALL CAPS.
-5. **IBM Plex Sans only** -- the template embeds it; do not substitute other fonts.
-6. **End every deck with layout 47** -- the IBM logo end slide.
-7. **Consult the layout reference** before selecting layouts -- choose the layout that best matches the content type rather than forcing content into a generic layout.
-8. **Check `resources/MANIFEST.md`** for available assets before referencing images or icons.
+1. Always use the IBM POTX template -- never create presentations from scratch
+2. Use IBM brand colors only -- never use original HashiCorp brand colors
+3. Left-align all text, sentence case -- no centered, justified, or title-cased text
+4. IBM Plex Sans only -- the template embeds it
+5. End every deck with layout 47
+6. Every content slide must have at least one visual enhancement beyond text
+7. Alternate slide backgrounds for visual rhythm (white -> cyan_10 -> white -> gray_10)
+8. Keep text within character limits -- overflow is never acceptable
+9. Consult `resources/MANIFEST.md` before referencing images or icons
