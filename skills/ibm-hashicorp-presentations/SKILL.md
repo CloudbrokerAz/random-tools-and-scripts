@@ -310,6 +310,7 @@ All HashiCorp products are now part of IBM. Use IBM brand colors, not original H
 | **`accent_color`** | string | Hex color for accent elements |
 | **`accent_bars`** | object[] | Colored rectangles: {x, y, width, height, color} |
 | **`overlays`** | object[] | Freeform images: {image, x, y, width, height} |
+| **`scrim`** | object | Semi-transparent dark overlay for text contrast: {x, y, width, height, color, opacity}. Place AFTER overlays, BEFORE text. Mandatory on all image-backed slides. |
 | **`dividers`** | object[] | Lines: {x, y, length, orientation, color} |
 | **`callouts`** | object[] | Highlight shapes: {x, y, width, height, fill, border, text, shadow, rich_text, font_size, valign, text_color, corner_radius} |
 | **`cards`** | object[] | Card elements: {x, y, width, height, fill, accent_color, title, body, icon, shadow, border_color, corner_radius} |
@@ -2023,10 +2024,26 @@ Section dividers (layout 7), agenda slides (layout 6), and topic heading slides 
 
 **How to create a visually rich section divider on layout 45:**
 1. Add a full-bleed background image via `overlays`: `{"image": "resources/images/potx_imageNN.png", "x": 0, "y": 0, "width": 26.67, "height": 15.0}`
-2. Add a semi-transparent dark overlay shape for text contrast (dark fill with opacity, or use a dark-tinted image)
+2. **ALWAYS add a dark scrim** for text contrast using the `scrim` field: `{"x": 0, "y": 0, "width": 26.67, "height": 15.0, "color": "#000000", "opacity": 60}` — this creates a semi-transparent dark overlay between the image and text so white text is always readable regardless of image brightness
 3. Add the section title as a large text_box with white text (font_size 60, bold)
 4. Add a subtitle text_box below (font_size 28, white or light gray)
 5. Add a gradient_bar or accent_bar for brand color
+
+**Complete section divider example:**
+```json
+{
+  "layout": 45,
+  "overlays": [{"image": "resources/images/potx_image8.png", "x": 0, "y": 0, "width": 26.67, "height": 15.0}],
+  "scrim": {"x": 0, "y": 0, "width": 26.67, "height": 15.0, "color": "#000000", "opacity": 60},
+  "text_boxes": [
+    {"x": 0.63, "y": 5.0, "width": 20.0, "height": 3.0, "text": "Section Title", "font_size": 60, "bold": true, "color": "#FFFFFF"},
+    {"x": 0.63, "y": 8.5, "width": 20.0, "height": 1.5, "text": "Subtitle text here", "font_size": 28, "color": "#E0E0E0"}
+  ],
+  "visuals": [{"type": "gradient_bar", "colors": ["#0043CE", "#0F62FE", "#4589FF"], "x": 0.63, "y": 4.5, "width": 10.0, "height": 0.15}]
+}
+```
+
+The `scrim` field creates a semi-transparent overlay. Use `opacity: 60` (60% opaque) for most images. For very bright images, increase to `opacity: 70`. The scrim is placed AFTER the image overlay but BEFORE text boxes, ensuring text contrast.
 
 **Background image catalog for section dividers and headings** — use DIFFERENT images throughout the deck, never repeat:
 

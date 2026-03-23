@@ -559,6 +559,47 @@ def _add_accent_bar(slide, x, y, width, height, color):
     return shape
 
 
+def _apply_fill_opacity(shape, opacity_pct):
+    """Set the fill opacity on a shape via XML manipulation.
+
+    Args:
+        shape: A python-pptx shape with a solid fill already applied.
+        opacity_pct: Opacity as a percentage (0=fully transparent, 100=fully opaque).
+    """
+    # Find the solidFill element and add an alpha child
+    spPr = shape._element.spPr
+    solid_fill = spPr.find(qn('a:solidFill'))
+    if solid_fill is not None:
+        color_elem = solid_fill.find(qn('a:srgbClr'))
+        if color_elem is not None:
+            # Remove existing alpha if any
+            for existing in color_elem.findall(qn('a:alpha')):
+                color_elem.remove(existing)
+            alpha = etree.SubElement(color_elem, qn('a:alpha'))
+            # Value is in 1000ths of a percent (100% = 100000)
+            alpha.set('val', str(int(opacity_pct * 1000)))
+
+
+def _add_scrim_overlay(slide, x, y, width, height, color="#000000", opacity=50):
+    """Add a semi-transparent dark overlay for text contrast over images.
+
+    Args:
+        slide: The slide to add the scrim to.
+        x, y, width, height: Position and size in inches.
+        color: Scrim color hex (default black).
+        opacity: Opacity percentage (default 50 = 50% opaque).
+    """
+    shape = slide.shapes.add_shape(
+        MSO_SHAPE.RECTANGLE,
+        Inches(x), Inches(y), Inches(width), Inches(height)
+    )
+    shape.fill.solid()
+    shape.fill.fore_color.rgb = parse_color(color)
+    shape.line.fill.background()
+    _apply_fill_opacity(shape, opacity)
+    return shape
+
+
 NAMED_BACKGROUNDS = {
     "white": "#FFFFFF",
     "cyan_10": "#E5F6FF",
@@ -2373,6 +2414,17 @@ def build_slide(prs: Presentation, slide_spec: dict, base_dir: Optional[Path] = 
     # Freeform image overlays
     if slide_spec.get("overlays"):
         _add_overlay_images(slide, slide_spec["overlays"], base_dir)
+
+    # Dark scrim overlay for text contrast on image-backed slides
+    if slide_spec.get("scrim"):
+        scrim = slide_spec["scrim"]
+        _add_scrim_overlay(
+            slide,
+            scrim.get("x", 0), scrim.get("y", 0),
+            scrim.get("width", 26.67), scrim.get("height", 15.0),
+            scrim.get("color", "#000000"),
+            scrim.get("opacity", 50)
+        )
 
     # Divider lines
     if slide_spec.get("dividers"):
