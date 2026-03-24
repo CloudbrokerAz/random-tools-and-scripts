@@ -224,6 +224,25 @@ All HashiCorp products are now part of IBM. Use IBM brand colors, not original H
 | Waypoint | Application Deployment | Teal 50 `#009D9A` |
 | Vagrant | Development Environments | Blue 60 `#0F62FE` |
 
+### WCAG Color Contrast Rules
+
+These rules prevent accessibility failures. The `build_presentation.py` script handles process_flow and icon_badge text colors automatically via `contrast_safe_text_color()`, but the JSON spec author must follow these rules for cards, text_boxes, and callouts.
+
+**Never use Yellow 30 (#F1C21B) as a fill behind white text.** Yellow 30 has high luminance — white text on it achieves only 1.68:1 contrast (needs 3.0:1 minimum). Use dark text (#161616) on Yellow 30 fills instead. The build script handles this automatically for process_flow steps and icon badges, but you must set `"text_color": "#161616"` manually in cards and text_boxes that use Yellow 30 as accent_color or fill.
+
+**Prefer 60/70-level colors for fills behind white text.** The 50-level accent colors (Purple 50, Teal 50, Green 50, Red 50) give only 3.3-3.4:1 contrast with white — they pass AA for large text but fail for normal text. For better accessibility, use darker variants as fills:
+
+| Instead of | Use | White text contrast |
+|---|---|---|
+| Purple 50 `#A56EFF` | Purple 60 `#8A3FFC` | 4.97:1 (AA pass) |
+| Teal 50 `#009D9A` | Teal 60 `#007D79` | 4.99:1 (AA pass) |
+| Green 50 `#24A148` | Green 60 `#198038` | 5.02:1 (AA pass) |
+| Red 50 `#FA4D56` | Red 60 `#DA1E28` | 4.63:1 (AA pass) |
+
+Keep the 50-level colors for text-on-light-background and accent bars where contrast is not an issue.
+
+**Process flow steps: maximum 4 steps per visual.** Beyond 4 steps, the shapes become too narrow for readable text and the slide gets cluttered (45+ shapes). If you need 5+ steps, split across two slides or use a simplified timeline layout instead.
+
 ## JSON Slide Specification Reference
 
 ```json

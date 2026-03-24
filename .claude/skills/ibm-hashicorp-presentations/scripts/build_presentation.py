@@ -65,6 +65,22 @@ VAGRANT_COLOR = IBM_BLUE_60
 IBM_FONT = "IBM Plex Sans"
 IBM_FONT_LIGHT = "IBM Plex Sans Light"
 
+
+def contrast_safe_text_color(bg_hex: str) -> str:
+    """Return white or dark text color based on background luminance.
+
+    Uses WCAG relative luminance to decide whether white (#FFFFFF) or
+    dark (#161616) text will have better contrast on the given background.
+    """
+    c = bg_hex.lstrip("#")
+    r, g, b = int(c[0:2], 16) / 255, int(c[2:4], 16) / 255, int(c[4:6], 16) / 255
+    # sRGB to linear
+    r = r / 12.92 if r <= 0.04045 else ((r + 0.055) / 1.055) ** 2.4
+    g = g / 12.92 if g <= 0.04045 else ((g + 0.055) / 1.055) ** 2.4
+    b = b / 12.92 if b <= 0.04045 else ((b + 0.055) / 1.055) ** 2.4
+    luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
+    return "#FFFFFF" if luminance < 0.36 else "#161616"
+
 # ---------------------------------------------------------------------------
 # Layout metadata: maps layout index -> name and ordered placeholder semantics
 # ---------------------------------------------------------------------------
@@ -1284,7 +1300,8 @@ def _add_native_process_flow(slide, spec):
         run.font.name = IBM_FONT
         run.font.bold = True
         run.font.size = Pt(22)
-        run.font.color.rgb = parse_color("#FFFFFF")
+        text_color = contrast_safe_text_color(step_color)
+        run.font.color.rgb = parse_color(text_color)
 
         # Optional sublabel
         sublabel = step.get("sublabel", "")
@@ -1295,7 +1312,7 @@ def _add_native_process_flow(slide, spec):
             run2.text = sublabel
             run2.font.name = IBM_FONT
             run2.font.size = Pt(18)
-            run2.font.color.rgb = parse_color("#E0E0E0")
+            run2.font.color.rgb = parse_color(text_color)
 
         # Draw arrow between steps (not after last step)
         if i < n - 1:
@@ -1329,7 +1346,7 @@ def _add_native_stat_card(slide, spec):
     )
     bg_shape.fill.solid()
     bg_shape.fill.fore_color.rgb = parse_color("#FFFFFF")
-    bg_shape.line.color.rgb = parse_color("#E0E0E0")
+    bg_shape.line.color.rgb = parse_color("#C6C6C6")
     bg_shape.line.width = Pt(1)
     _apply_shadow(bg_shape)
 
@@ -1424,7 +1441,7 @@ def _add_native_metric_card(slide, spec):
     )
     bg_shape.fill.solid()
     bg_shape.fill.fore_color.rgb = parse_color("#FFFFFF")
-    bg_shape.line.color.rgb = parse_color("#E0E0E0")
+    bg_shape.line.color.rgb = parse_color("#C6C6C6")
     bg_shape.line.width = Pt(1)
 
     # Large centered value text
@@ -1488,7 +1505,9 @@ def _add_native_icon_badge(slide, spec):
     run.text = str(spec.get("number", ""))
     run.font.name = IBM_FONT
     run.font.bold = True
-    run.font.color.rgb = parse_color(spec.get("text_color", "#FFFFFF"))
+    badge_color = spec.get("color", "#0F62FE")
+    default_text = contrast_safe_text_color(badge_color)
+    run.font.color.rgb = parse_color(spec.get("text_color", default_text))
     run.font.size = Pt(int(min(w, h) * 72 * 0.35))  # Scale to badge size
 
     # Center vertically
