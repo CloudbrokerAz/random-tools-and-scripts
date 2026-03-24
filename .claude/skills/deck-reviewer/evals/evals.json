@@ -1,0 +1,23 @@
+{
+  "skill_name": "deck-reviewer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Can you review the presentation at presentations/HCP-Terraform-Agentic-Control-Plane.pptx? I want to make sure the slides look clean and professional before I present at our team meeting.",
+      "expected_output": "A structured review covering automated findings (contrast issues, overlaps, alignment) plus qualitative observations about visual quality, variety, and readability. Should mention the WCAG AA failures on slide 6 and flag the limited slide variety.",
+      "files": ["presentations/HCP-Terraform-Agentic-Control-Plane.pptx"]
+    },
+    {
+      "id": 2,
+      "prompt": "I need to check if my HCP Terraform deck at presentations/HCP-Terraform-Agentic-Control-Plane.pptx meets accessibility standards — specifically color contrast. Can you check it?",
+      "expected_output": "A focused accessibility review highlighting the WCAG AA failures (slide 6: #e0e0e0 on #a56eff and #e0e0e0 on #009d9a) and the AAA-level warnings across multiple slides. Should include specific color fix recommendations.",
+      "files": ["presentations/HCP-Terraform-Agentic-Control-Plane.pptx"]
+    },
+    {
+      "id": 3,
+      "prompt": "anything wrong with these slides? presentations/HCP-Terraform-Agentic-Control-Plane.pptx — they feel kind of samey and cluttered but I can't put my finger on it",
+      "expected_output": "Review that validates the user's intuition about sameyness (only 3 slide types, diagram-heavy) and clutter (multiple slides have 17-23 shapes, 90%+ coverage). Should suggest specific variety improvements and simplification strategies.",
+      "files": ["presentations/HCP-Terraform-Agentic-Control-Plane.pptx"]
+    }
+  ]
+}
