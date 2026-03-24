@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>{{TITLE}}</title>
+<link rel="stylesheet" href="fonts/inter.css">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1920px; height: 1080px; overflow: hidden;
+    font-family: 'Inter', sans-serif;
+    color: #000000;
+    background: #ffffff;
+    position: relative;
+  }
+
+  /* Layered background images — official HC CY26 Kit */
+  .bg-layer {
+    position: absolute; top: 0; left: 0;
+    width: 1920px; height: 1080px;
+    pointer-events: none;
+  }
+  .bg-gradient {
+    z-index: 1;
+    background: url('media/hc-gradient-base.png') top center / 1920px 1080px no-repeat;
+  }
+  .bg-glow-left {
+    z-index: 2;
+    background: url('media/hc-glow-left.png') bottom left / auto 1080px no-repeat;
+  }
+  .bg-glow-right {
+    z-index: 3;
+    background: url('media/hc-glow-right.png') top right / auto 1080px no-repeat;
+  }
+  .bg-arcs {
+    z-index: 4;
+    background: url('media/hc-arc-lines.png') center right / auto 1080px no-repeat;
+  }
+
+  /* Title — large purple text, positioned like the source deck */
+  .title-content {
+    position: absolute;
+    top: 420px; left: 86px;
+    z-index: 10;
+    max-width: 1200px;
+  }
+  .title-content h1 {
+    font-size: 96px; font-weight: 700; line-height: 1.05;
+    color: #9B5DE5; letter-spacing: -0.03em;
+  }
+  .title-content .subtitle {
+    font-size: 28px; font-weight: 300; color: #727274;
+    margin-top: 24px; letter-spacing: 0.01em;
+  }
+
+  /* Speaker / presenter info — bottom left */
+  .speaker-info {
+    position: absolute;
+    bottom: 100px; left: 86px;
+    z-index: 10;
+    display: flex; gap: 80px;
+  }
+  .speaker {
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .speaker-name {
+    font-size: 18px; font-weight: 600; color: #000000;
+  }
+  .speaker-role {
+    font-size: 14px; font-weight: 400; color: #727274;
+    line-height: 1.4;
+  }
+
+  /* Bottom-left small text */
+  .footer-text {
+    position: absolute;
+    bottom: 40px; left: 86px;
+    z-index: 10;
+    font-size: 11px; font-weight: 400; color: #9B9B9B;
+  }
+</style>
+</head>
+<body>
+
+<!-- 4-layer background from HC CY26 Kit -->
+<div class="bg-layer bg-gradient"></div>
+<div class="bg-layer bg-glow-left"></div>
+<div class="bg-layer bg-glow-right"></div>
+<div class="bg-layer bg-arcs"></div>
+
+<!-- Title — replace {{TITLE_LINE1}}, {{TITLE_LINE2}}, {{SUBTITLE}} -->
+<div class="title-content">
+  <h1>{{TITLE_LINE1}}<br>{{TITLE_LINE2}}</h1>
+  <div class="subtitle">{{SUBTITLE}}</div>
+</div>
+
+<!-- Optional: Speaker info — uncomment and fill in
+<div class="speaker-info">
+  <div class="speaker">
+    <div class="speaker-name">Speaker Name</div>
+    <div class="speaker-role">Title<br>Organization</div>
+  </div>
+</div>
+-->
+
+<div class="footer-text">&copy; HashiCorp</div>
+
+</body>
+</html>

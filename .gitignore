@@ -1,3 +1,7 @@
 gh-workflow-workspace/
 ibm-hashicorp-presentations-workspace/
 skills/ibm-deck/
+.venv/
+presentations/
+.DS_Store
+.claude/settings.local.json
