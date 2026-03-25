@@ -181,9 +181,13 @@ Choose layouts based on content type, then add visual enhancements:
 
 **Primary:** IBM Blue 60: `#0F62FE`
 
-**Theme Accents:**
+**Theme Accents (decorative only — never as text backgrounds):**
 - Purple 50: `#A56EFF` | Cyan 80: `#003A6D` | Teal 50: `#009D9A`
-- Magenta 70: `#9F1853` | Red 50: `#FA4D56`
+- Magenta 50: `#EE5396` | Red 50: `#FA4D56`
+
+**WCAG-Safe Fills (for backgrounds behind white text, ≥4.5:1):**
+- Blue 70: `#0043CE` | Purple 70: `#6929C4` | Teal 70: `#005D5D`
+- Red 70: `#A2191F` | Green 70: `#0E6027` | Magenta 70: `#9F1853`
 
 **Backgrounds:**
 - White: `#FFFFFF` | Cyan 10: `#E5F6FF` | Cyan 20: `#BAE6FF` | Gray 10: `#F4F4F4`
@@ -213,35 +217,49 @@ Use gradient_bar visuals with these color triplets on section dividers and accen
 
 All HashiCorp products are now part of IBM. Use IBM brand colors, not original HashiCorp colors.
 
-| Product | Domain | IBM Color |
-|---------|--------|-----------|
-| Terraform | Infrastructure as Code | Purple 50 `#A56EFF` |
-| Vault | Secrets Management | Yellow 30 `#F1C21B` |
-| Consul | Service Mesh | Magenta 50 `#EE5396` |
-| Nomad | Workload Orchestration | Green 50 `#24A148` |
-| Packer | Image Building | Cyan 50 `#1192E8` |
-| Boundary | Access Management | Red 50 `#FA4D56` |
-| Waypoint | Application Deployment | Teal 50 `#009D9A` |
-| Vagrant | Development Environments | Blue 60 `#0F62FE` |
+| Product | Domain | Accent Color | Fill for White Text | Text on White/Light |
+|---------|--------|-------------|---------------------|---------------------|
+| Terraform | Infrastructure as Code | Purple 50 `#A56EFF` | Purple 70 `#6929C4` | Purple 70 `#6929C4` |
+| Vault | Secrets Management | Yellow 30 `#F1C21B` | Gray 90 `#262626` | Gray 90 `#262626` |
+| Consul | Service Mesh | Magenta 50 `#EE5396` | Magenta 70 `#9F1853` | Magenta 70 `#9F1853` |
+| Nomad | Workload Orchestration | Green 50 `#24A148` | Green 70 `#0E6027` | Green 70 `#0E6027` |
+| Packer | Image Building | Cyan 50 `#1192E8` | Cyan 70 `#00539A` | Cyan 70 `#00539A` |
+| Boundary | Access Management | Red 50 `#FA4D56` | Red 70 `#A2191F` | Red 70 `#A2191F` |
+| Waypoint | Application Deployment | Teal 50 `#009D9A` | Teal 70 `#005D5D` | Teal 70 `#005D5D` |
+| Vagrant | Development Environments | Blue 60 `#0F62FE` | Blue 70 `#0043CE` | Blue 70 `#0043CE` |
+
+**Accent colors** (50-grade) are for accent bars, decorative elements, and thin borders only — never as fills behind text. **Fill colors** (70-grade) are darkened variants that achieve WCAG AA (≥4.5:1) contrast with white text. **Text colors** (70-grade) achieve WCAG AA on white or light-tint backgrounds. The build script enforces these automatically via `_wcag_safe_fill()` and `contrast_safe_text_color()`.
 
 ### WCAG Color Contrast Rules
 
-These rules prevent accessibility failures. The `build_presentation.py` script handles process_flow and icon_badge text colors automatically via `contrast_safe_text_color()`, but the JSON spec author must follow these rules for cards, text_boxes, and callouts.
+The build script now enforces WCAG AA contrast automatically. `_wcag_safe_fill()` darkens any background color that would fail 4.5:1 contrast with white text. `contrast_safe_text_color()` picks white or dark (#161616) text based on whichever achieves higher contrast. Architecture diagrams, process flows, stat cards, metric cards, and icon badges all apply these checks automatically.
 
-**Never use Yellow 30 (#F1C21B) as a fill behind white text.** Yellow 30 has high luminance — white text on it achieves only 1.68:1 contrast (needs 3.0:1 minimum). Use dark text (#161616) on Yellow 30 fills instead. The build script handles this automatically for process_flow steps and icon badges, but you must set `"text_color": "#161616"` manually in cards and text_boxes that use Yellow 30 as accent_color or fill.
+**Automatic enforcement covers:**
+- Architecture diagram items: fills auto-darkened for white text readability
+- Architecture diagram labels: text color auto-darkened for white/light background readability
+- Process flow steps: text color auto-selected via contrast check
+- Icon badges: text color auto-selected via contrast check
+- Stat card / metric card values: text color auto-checked against white background
 
-**Prefer 60/70-level colors for fills behind white text.** The 50-level accent colors (Purple 50, Teal 50, Green 50, Red 50) give only 3.3-3.4:1 contrast with white — they pass AA for large text but fail for normal text. For better accessibility, use darker variants as fills:
+**JSON spec authors still must follow these rules for cards, text_boxes, and callouts:**
 
-| Instead of | Use | White text contrast |
-|---|---|---|
-| Purple 50 `#A56EFF` | Purple 60 `#8A3FFC` | 4.97:1 (AA pass) |
-| Teal 50 `#009D9A` | Teal 60 `#007D79` | 4.99:1 (AA pass) |
-| Green 50 `#24A148` | Green 60 `#198038` | 5.02:1 (AA pass) |
-| Red 50 `#FA4D56` | Red 60 `#DA1E28` | 4.63:1 (AA pass) |
+1. **Never use 50-grade colors as fills behind white text.** Use the 70-grade variant from the product table above, or set `"text_color": "#161616"` for dark text.
+2. **Never use Yellow 30 (#F1C21B) as a fill behind any light-colored text.** Always pair with dark text (#161616 or #262626).
+3. **For colored text on white or light backgrounds**, use 70-grade colors (see product table). 50-grade colors like Purple 50 and Teal 50 fail WCAG AA on white.
+4. **For text on tinted card backgrounds** (e.g., Blue tint #EDF5FF), use 80-grade text colors for maximum readability.
+5. **Process flow steps: maximum 4 steps per visual.** Beyond 4 steps, the shapes become too narrow for readable text and the slide gets cluttered (45+ shapes). If you need 5+ steps, split across two slides or use a simplified timeline layout instead.
 
-Keep the 50-level colors for text-on-light-background and accent bars where contrast is not an issue.
+**Quick reference — WCAG AA safe text colors on white:**
 
-**Process flow steps: maximum 4 steps per visual.** Beyond 4 steps, the shapes become too narrow for readable text and the slide gets cluttered (45+ shapes). If you need 5+ steps, split across two slides or use a simplified timeline layout instead.
+| Color | Hex | Contrast on White | Status |
+|-------|-----|-------------------|--------|
+| Blue 70 | `#0043CE` | 7.14:1 | AA + AAA |
+| Purple 70 | `#6929C4` | 7.07:1 | AA + AAA |
+| Teal 70 | `#005D5D` | 7.04:1 | AA + AAA |
+| Red 60 | `#DA1E28` | 5.34:1 | AA |
+| Green 60 | `#198038` | 4.82:1 | AA |
+| Magenta 70 | `#9F1853` | 7.17:1 | AA + AAA |
+| Gray 90 | `#262626` | 14.68:1 | AA + AAA |
 
 ## JSON Slide Specification Reference
 

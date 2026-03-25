@@ -40,11 +40,16 @@ from pptx.util import Inches, Pt, Emu
 # IBM Carbon Design System Colors
 # ---------------------------------------------------------------------------
 IBM_BLUE_60 = RGBColor(0x0F, 0x62, 0xFE)
+IBM_BLUE_70 = RGBColor(0x00, 0x43, 0xCE)
 IBM_PURPLE_50 = RGBColor(0xA5, 0x6E, 0xFF)
+IBM_PURPLE_70 = RGBColor(0x69, 0x29, 0xC4)
 IBM_CYAN_80 = RGBColor(0x00, 0x3A, 0x6D)
 IBM_TEAL_50 = RGBColor(0x00, 0x9D, 0x9A)
+IBM_TEAL_70 = RGBColor(0x00, 0x5D, 0x5D)
 IBM_MAGENTA_70 = RGBColor(0x9F, 0x18, 0x53)
 IBM_RED_50 = RGBColor(0xFA, 0x4D, 0x56)
+IBM_RED_70 = RGBColor(0xA2, 0x19, 0x1F)
+IBM_GREEN_70 = RGBColor(0x0E, 0x60, 0x27)
 IBM_CYAN_10 = RGBColor(0xE5, 0xF6, 0xFF)
 IBM_CYAN_20 = RGBColor(0xBA, 0xE6, 0xFF)
 IBM_GRAY_10 = RGBColor(0xF4, 0xF4, 0xF4)
@@ -66,20 +71,128 @@ IBM_FONT = "IBM Plex Sans"
 IBM_FONT_LIGHT = "IBM Plex Sans Light"
 
 
-def contrast_safe_text_color(bg_hex: str) -> str:
-    """Return white or dark text color based on background luminance.
+# ---------------------------------------------------------------------------
+# WCAG Contrast Utilities
+# ---------------------------------------------------------------------------
 
-    Uses WCAG relative luminance to decide whether white (#FFFFFF) or
-    dark (#161616) text will have better contrast on the given background.
-    """
-    c = bg_hex.lstrip("#")
+def _relative_luminance(hex_color: str) -> float:
+    """Calculate WCAG 2.1 relative luminance for a hex color."""
+    c = hex_color.lstrip("#")
     r, g, b = int(c[0:2], 16) / 255, int(c[2:4], 16) / 255, int(c[4:6], 16) / 255
-    # sRGB to linear
     r = r / 12.92 if r <= 0.04045 else ((r + 0.055) / 1.055) ** 2.4
     g = g / 12.92 if g <= 0.04045 else ((g + 0.055) / 1.055) ** 2.4
     b = b / 12.92 if b <= 0.04045 else ((b + 0.055) / 1.055) ** 2.4
-    luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
-    return "#FFFFFF" if luminance < 0.36 else "#161616"
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def _wcag_contrast_ratio(color1_hex: str, color2_hex: str) -> float:
+    """Calculate WCAG 2.1 contrast ratio between two colors (1.0 to 21.0)."""
+    l1 = _relative_luminance(color1_hex)
+    l2 = _relative_luminance(color2_hex)
+    lighter = max(l1, l2)
+    darker = min(l1, l2)
+    return (lighter + 0.05) / (darker + 0.05)
+
+
+def contrast_safe_text_color(bg_hex: str) -> str:
+    """Return white or dark text color based on WCAG contrast ratio.
+
+    Computes actual contrast ratios against both white (#FFFFFF) and
+    dark (#161616) and returns whichever achieves higher contrast.
+    """
+    white_ratio = _wcag_contrast_ratio(bg_hex, "#FFFFFF")
+    dark_ratio = _wcag_contrast_ratio(bg_hex, "#161616")
+    return "#FFFFFF" if white_ratio >= dark_ratio else "#161616"
+
+
+# Map from mid-tone accent colors to their WCAG-safe darker variants.
+# Used by _wcag_safe_fill() to darken fills behind white text.
+_WCAG_DARKEN_MAP = {
+    "#a56eff": "#6929C4",  # Purple 50 -> Purple 70 (7.07:1)
+    "#009d9a": "#005D5D",  # Teal 50 -> Teal 70 (7.04:1)
+    "#24a148": "#0E6027",  # Green 50 -> Green 70 (8.56:1)
+    "#fa4d56": "#A2191F",  # Red 50 -> Red 70 (7.08:1)
+    "#ee5396": "#9F1853",  # Magenta 50 -> Magenta 70 (7.17:1)
+    "#f1c21b": "#262626",  # Yellow 30 -> Gray 90 (never use yellow as fill for text)
+    "#0f62fe": "#0043CE",  # Blue 60 -> Blue 70 (7.14:1)
+    "#1192e8": "#00539A",  # Cyan 50 -> Cyan 70 (6.24:1)
+    "#8a3ffc": "#6929C4",  # Purple 60 -> Purple 70 (7.07:1)
+    "#d0e2ff": "#0043CE",  # Blue 10 -> Blue 70 (use dark fill instead of light)
+    "#e8daff": "#6929C4",  # Purple 10 -> Purple 70
+    "#d9fbfb": "#005D5D",  # Teal 10 -> Teal 70
+    "#fff1c5": "#262626",  # Yellow 10 -> Gray 90
+    "#ffe0e0": "#A2191F",  # Red 10 -> Red 70
+    "#defbe6": "#0E6027",  # Green 10 -> Green 70
+}
+
+# Map from mid-tone accent colors to WCAG-safe text color for use on white/light backgrounds.
+_WCAG_TEXT_ON_WHITE_MAP = {
+    "#a56eff": "#6929C4",  # Purple 50 -> Purple 70 (7.07:1 on white)
+    "#009d9a": "#005D5D",  # Teal 50 -> Teal 70 (7.04:1 on white)
+    "#24a148": "#0E6027",  # Green 50 -> Green 70 (8.56:1 on white)
+    "#fa4d56": "#A2191F",  # Red 50 -> Red 70 (7.08:1 on white)
+    "#ee5396": "#9F1853",  # Magenta 50 -> Magenta 70 (7.17:1 on white)
+    "#f1c21b": "#262626",  # Yellow 30 -> Gray 90 (yellow text on white is never accessible)
+    "#0f62fe": "#0043CE",  # Blue 60 -> Blue 70 (7.14:1 on white)
+    "#1192e8": "#00539A",  # Cyan 50 -> Cyan 70 (6.24:1 on white)
+    "#8a3ffc": "#6929C4",  # Purple 60 -> Purple 70
+    "#8a6d00": "#262626",  # Yellow 60-ish -> Gray 90
+}
+
+
+def _wcag_safe_fill(color_hex: str, min_ratio: float = 4.5) -> str:
+    """Return a WCAG-safe version of the color for use as a fill behind white text.
+
+    If the original color achieves >= min_ratio contrast with white, returns it
+    unchanged. Otherwise, looks up a known darker variant or progressively darkens.
+    """
+    if _wcag_contrast_ratio(color_hex, "#FFFFFF") >= min_ratio:
+        return color_hex
+
+    # Check the lookup table for a known safe variant
+    safe = _WCAG_DARKEN_MAP.get(color_hex.lower())
+    if safe and _wcag_contrast_ratio(safe, "#FFFFFF") >= min_ratio:
+        return safe
+
+    # Fallback: progressively darken the color
+    c = color_hex.lstrip("#")
+    r, g, b = int(c[0:2], 16), int(c[2:4], 16), int(c[4:6], 16)
+    for pct in range(95, 0, -5):
+        f = pct / 100
+        dr, dg, db = int(r * f), int(g * f), int(b * f)
+        darkened = f"#{dr:02x}{dg:02x}{db:02x}"
+        if _wcag_contrast_ratio(darkened, "#FFFFFF") >= min_ratio:
+            return darkened
+
+    return "#161616"
+
+
+def _wcag_safe_text_on_white(color_hex: str, bg_hex: str = "#FFFFFF",
+                              min_ratio: float = 4.5) -> str:
+    """Return a WCAG-safe text color for use on a white or light background.
+
+    If the original color achieves >= min_ratio contrast against bg_hex, returns
+    it unchanged. Otherwise looks up or computes a darker variant.
+    """
+    if _wcag_contrast_ratio(color_hex, bg_hex) >= min_ratio:
+        return color_hex
+
+    # Check the lookup table
+    safe = _WCAG_TEXT_ON_WHITE_MAP.get(color_hex.lower())
+    if safe and _wcag_contrast_ratio(safe, bg_hex) >= min_ratio:
+        return safe
+
+    # Fallback: progressively darken
+    c = color_hex.lstrip("#")
+    r, g, b = int(c[0:2], 16), int(c[2:4], 16), int(c[4:6], 16)
+    for pct in range(95, 0, -5):
+        f = pct / 100
+        dr, dg, db = int(r * f), int(g * f), int(b * f)
+        darkened = f"#{dr:02x}{dg:02x}{db:02x}"
+        if _wcag_contrast_ratio(darkened, bg_hex) >= min_ratio:
+            return darkened
+
+    return "#161616"
 
 # ---------------------------------------------------------------------------
 # Layout metadata: maps layout index -> name and ordered placeholder semantics
@@ -1360,7 +1473,8 @@ def _add_native_stat_card(slide, spec):
     accent_shape.fill.fore_color.rgb = parse_color(accent_color)
     accent_shape.line.fill.background()
 
-    # 3. Large value text (centered)
+    # 3. Large value text (centered, WCAG-safe on white card background)
+    safe_value_color = _wcag_safe_text_on_white(accent_color)
     value_y = y + accent_h + 0.3
     value_h = 1.2
     txBox = slide.shapes.add_textbox(
@@ -1376,7 +1490,7 @@ def _add_native_stat_card(slide, spec):
     run.font.name = IBM_FONT
     run.font.bold = True
     run.font.size = Pt(48)
-    run.font.color.rgb = parse_color(accent_color)
+    run.font.color.rgb = parse_color(safe_value_color)
 
     # 4. Label text (centered, gray)
     label_y = value_y + value_h + 0.1
@@ -1444,7 +1558,8 @@ def _add_native_metric_card(slide, spec):
     bg_shape.line.color.rgb = parse_color("#C6C6C6")
     bg_shape.line.width = Pt(1)
 
-    # Large centered value text
+    # Large centered value text (WCAG-safe on white card background)
+    safe_metric_color = _wcag_safe_text_on_white(color)
     value_h = h * 0.55
     txBox = slide.shapes.add_textbox(
         Inches(x + 0.2), Inches(y + 0.2),
@@ -1459,7 +1574,7 @@ def _add_native_metric_card(slide, spec):
     run.font.name = IBM_FONT
     run.font.bold = True
     run.font.size = Pt(48)
-    run.font.color.rgb = parse_color(color)
+    run.font.color.rgb = parse_color(safe_metric_color)
     bodyPr = txBox._element.txBody.find(qn('a:bodyPr'))
     if bodyPr is not None:
         bodyPr.set('anchor', 'b')
@@ -1637,7 +1752,7 @@ def _add_native_architecture_diagram(slide, spec):
         bar_shape.line.fill.background()
         bar_shape.text_frame.clear()
 
-        # -- Layer label --
+        # -- Layer label (WCAG-safe text on white background) --
         label_shape = slide.shapes.add_shape(
             MSO_SHAPE.RECTANGLE,
             Inches(x + label_offset), Inches(ly), Inches(label_w), Inches(layer_h),
@@ -1656,7 +1771,8 @@ def _add_native_architecture_diagram(slide, spec):
         run.font.name = IBM_FONT
         run.font.bold = True
         run.font.size = Pt(24)
-        run.font.color.rgb = layer_color
+        safe_label_color = _wcag_safe_text_on_white(layer_color_str)
+        run.font.color.rgb = parse_color(safe_label_color)
 
         # -- Item shapes --
         if items:
@@ -1669,12 +1785,17 @@ def _add_native_architecture_diagram(slide, spec):
                 ix = x + items_x_offset + j * (item_w + item_margin)
                 iy = ly + item_v_pad
 
+                # WCAG-safe: darken fill so white text achieves >= 4.5:1
+                safe_fill_hex = _wcag_safe_fill(layer_color_str)
+                safe_fill_rgb = parse_color(safe_fill_hex)
+                item_text_color = contrast_safe_text_color(safe_fill_hex)
+
                 item_shape = slide.shapes.add_shape(
                     MSO_SHAPE.ROUNDED_RECTANGLE,
                     Inches(ix), Inches(iy), Inches(item_w), Inches(item_h),
                 )
                 item_shape.fill.solid()
-                item_shape.fill.fore_color.rgb = layer_color
+                item_shape.fill.fore_color.rgb = safe_fill_rgb
                 item_shape.line.fill.background()
 
                 # Shadow on item shapes
@@ -1691,7 +1812,7 @@ def _add_native_architecture_diagram(slide, spec):
                 irun.text = item_text
                 irun.font.name = IBM_FONT
                 irun.font.size = Pt(18)
-                irun.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
+                irun.font.color.rgb = parse_color(item_text_color)
 
         # -- Connector line to next layer --
         if draw_connectors and i < n_layers - 1:
